@@ -1,6 +1,8 @@
-const path = require('path');
-// Memuat .env dengan path absolut agar selalu ketemu
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+// 🔥 PERBAIKAN: Hanya panggil dotenv jika jalan di laptop lokal
+if (process.env.NODE_ENV !== 'production') {
+  const path = require('path');
+  require('dotenv').config({ path: path.join(__dirname, '../.env') });
+}
 
 const express = require('express');
 const cors = require('cors');
