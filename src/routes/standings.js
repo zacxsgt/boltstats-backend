@@ -2,17 +2,11 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const NodeCache = require('node-cache');
-const cache = new NodeCache({ stdTTL: 300 });
-
-// TAMBAHKAN LOG INI DI BAWAH:
-router.use((req, res, next) => {
-  console.log("DEBUG: Request masuk ke route Standings:", req.originalUrl);
-  next();
-});
+const cache = new NodeCache({ stdTTL: 300 }); // Cache 5 menit
 
 router.get('/:leagueId/:season', async (req, res) => {
   const { leagueId, season } = req.params;
-  console.log(`DEBUG: Mencoba fetch liga ${leagueId} musim ${season}`);
+  console.log(`[STANDINGS ROUTE] Request liga ${leagueId} musim ${season}`);
   
   const cacheKey = `standings_${leagueId}_${season}`;
   const cached = cache.get(cacheKey);
@@ -27,7 +21,7 @@ router.get('/:leagueId/:season', async (req, res) => {
     cache.set(cacheKey, response.data);
     res.json(response.data);
   } catch (error) {
-    console.error("ERROR API:", error.message);
+    console.error("ERROR API KLASEMEN:", error.message);
     res.status(500).json({ error: 'Gagal ambil klasemen' });
   }
 });

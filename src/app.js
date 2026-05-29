@@ -10,7 +10,7 @@ const axios = require('axios');
 const admin = require('firebase-admin');
 const { Expo } = require('expo-server-sdk');
 
-// 1. Inisialisasi Firebase
+// Inisialisasi Firebase
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -28,98 +28,22 @@ const expo = new Expo();
 app.use(cors());
 app.use(express.json());
 
-// === UTILS: Fungsi Kirim Notifikasi ===
-async function sendPushToAllTokens(title, body) {
-  try {
-    const snapshot = await db.collection('push_tokens').get();
-    const tokens = snapshot.docs.map(doc => doc.id);
-    
-    if (tokens.length === 0) return;
-
-    const messages = tokens.map(token => ({ to: token, sound: 'default', title, body }));
-    const chunks = expo.chunkPushNotifications(messages);
-    
-    for (let chunk of chunks) {
-      await expo.sendPushNotificationsAsync(chunk);
-    }
-    console.log(`✅ Notifikasi Terkirim: ${title}`);
-  } catch (err) {
-    console.error("❌ Gagal kirim notifikasi:", err);
-  }
-}
-
-// === API CRON: SI PENJAGA PINTAR (Smart Watcher) ===
-app.get('/api/cron-check-matches', async (req, res) => {
-  console.log("🕒 [Smart Watcher] Memulai pengecekan...");
-
-  try {
-    const response = await axios.get(`https://v3.football.api-sports.io/fixtures?live=all`, {
-      headers: { 'x-apisports-key': process.env.API_KEY }
-    });
-    
-    const liveMatches = response.data.response || [];
-
-    if (liveMatches.length === 0) {
-      console.log("🌙 [Smart Watcher] Fase Tidur: Tidak ada pertandingan live. Berhenti.");
-      return res.json({ status: "Tidur (Idle)", message: "Tidak ada pertandingan live" });
-    }
-
-    console.log(`⚽ [Smart Watcher] Fase Aktif: ${liveMatches.length} pertandingan ditemukan.`);
-
-    for (let match of liveMatches) {
-      const matchId = match.fixture.id.toString();
-      const docRef = db.collection('matches_state').doc(matchId);
-      const doc = await docRef.get();
-      
-      const newScore = `${match.goals.home}-${match.goals.away}`;
-      const homeName = match.teams.home.name;
-      const awayName = match.teams.away.name;
-
-      if (!doc.exists) {
-        await docRef.set({ score: newScore, lastUpdated: new Date() });
-      } else {
-        const oldScore = doc.data().score;
-        if (oldScore !== newScore) {
-          console.log(`🔔 GOOOL! ${homeName} ${newScore} ${awayName}`);
-          await sendPushToAllTokens("⚽ GOOOL!", `${homeName} ${newScore} ${awayName}`);
-          await docRef.update({ score: newScore, lastUpdated: new Date() });
-        }
-      }
-    }
-    
-    res.json({ success: true, processed: liveMatches.length });
-  } catch (error) {
-    console.error("❌ Error Cron Job:", error.message);
-    res.status(500).json({ error: error.message });
-  }
+// === DEBUGGER GLOBAL (Agar kita tahu apa yang Vercel baca) ===
+app.use((req, res, next) => {
+  console.log(`[INCOMING REQUEST] ${req.method} ${req.originalUrl}`);
+  next();
 });
 
-// === ROUTES LAINNYA ===
-app.use('/api/matches', require('./routes/matches'));
-app.use('/api/prediction', require('./routes/prediction'));
+// === ROUTES ===
+// Tambahkan ekstensi .js di belakangnya untuk mencegah error Vercel
+app.use('/api/matches', require('./routes/matches.js'));
+app.use('/api/prediction', require('./routes/prediction.js'));
+app.use('/api/standings', require('./routes/standings.js')); 
 
-// === JARING LABA-LABA KLASEMEN ===
-app.get('*/standings/:leagueId/:season', async (req, res) => {
-  const { leagueId, season } = req.params;
-  console.log(`DEBUG: Mencoba fetch klasemen liga ${leagueId} musim ${season} via rute ${req.originalUrl}`);
-  
-  // (Sisa kode axios dan try-catch di bawahnya biarkan tetap sama)
-  
-  try {
-    const response = await axios.get(`https://v3.football.api-sports.io/standings`, {
-      headers: { 'x-apisports-key': process.env.API_KEY },
-      params: { league: leagueId, season: season }
-    });
-    res.json(response.data);
-  } catch (error) {
-    console.error("ERROR API KLASEMEN:", error.message);
-    res.status(500).json({ error: 'Gagal ambil klasemen' });
-  }
-});
-
-// Endpoint Dasar untuk cek server hidup
+// Endpoint Dasar
 app.get('/', (req, res) => res.send("Server Boltstats Berjalan & Terhubung ke Firestore!"));
 
+// Endpoint Save Token
 app.post('/api/save-token', async (req, res) => {
   const { pushToken } = req.body;
   if (!pushToken) return res.status(400).json({ error: "Token diperlukan" });
@@ -127,13 +51,9 @@ app.post('/api/save-token', async (req, res) => {
   res.json({ success: true });
 });
 
-// === JARING PENDETEKSI URL (PENTING UNTUK DEBUG VERCEL) ===
-app.use('*', (req, res) => {
-  res.status(404).json({
-    pesan: "Express menyala, tapi tidak mengenali rute ini.",
-    url_asli: req.originalUrl,
-    path_terbaca: req.path
-  });
+// Penanganan 404 jika rute benar-benar tidak ada
+app.use((req, res) => {
+  res.status(404).json({ error: `Route ${req.originalUrl} tidak ditemukan di server.` });
 });
 
 module.exports = app;
