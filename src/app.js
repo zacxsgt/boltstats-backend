@@ -8,7 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const admin = require('firebase-admin');
-const { Expo } = require('expo-server-sdk'); // Import di atas agar lebih efisien
+const { Expo } = require('expo-server-sdk');
 
 // 1. Inisialisasi Firebase
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -59,13 +59,11 @@ app.get('/api/cron-check-matches', async (req, res) => {
     
     const liveMatches = response.data.response || [];
 
-    // FASE TIDUR (Idle): Tidak ada pertandingan live
     if (liveMatches.length === 0) {
       console.log("🌙 [Smart Watcher] Fase Tidur: Tidak ada pertandingan live. Berhenti.");
       return res.json({ status: "Tidur (Idle)", message: "Tidak ada pertandingan live" });
     }
 
-    // FASE AKTIF (Match Mode): Memproses pertandingan
     console.log(`⚽ [Smart Watcher] Fase Aktif: ${liveMatches.length} pertandingan ditemukan.`);
 
     for (let match of liveMatches) {
@@ -78,11 +76,9 @@ app.get('/api/cron-check-matches', async (req, res) => {
       const awayName = match.teams.away.name;
 
       if (!doc.exists) {
-        // Pertandingan baru, catat state awal saja (jangan spam notif gol awal)
         await docRef.set({ score: newScore, lastUpdated: new Date() });
       } else {
         const oldScore = doc.data().score;
-        // Jika skor berubah, kirim notifikasi
         if (oldScore !== newScore) {
           console.log(`🔔 GOOOL! ${homeName} ${newScore} ${awayName}`);
           await sendPushToAllTokens("⚽ GOOOL!", `${homeName} ${newScore} ${awayName}`);
@@ -101,7 +97,23 @@ app.get('/api/cron-check-matches', async (req, res) => {
 // === ROUTES LAINNYA ===
 app.use('/api/matches', require('./routes/matches'));
 app.use('/api/prediction', require('./routes/prediction'));
-app.use('/api/standings', require('./routes/standings'));
+
+// === JALUR PINTAS KLASEMEN (Menggantikan routes/standings.js) ===
+app.get('/api/standings/:leagueId/:season', async (req, res) => {
+  const { leagueId, season } = req.params;
+  console.log(`DEBUG: Mencoba fetch klasemen liga ${leagueId} musim ${season}`);
+  
+  try {
+    const response = await axios.get(`https://v3.football.api-sports.io/standings`, {
+      headers: { 'x-apisports-key': process.env.API_KEY },
+      params: { league: leagueId, season: season }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error("ERROR API KLASEMEN:", error.message);
+    res.status(500).json({ error: 'Gagal ambil klasemen' });
+  }
+});
 
 // Endpoint Dasar untuk cek server hidup
 app.get('/', (req, res) => res.send("Server Boltstats Berjalan & Terhubung ke Firestore!"));
