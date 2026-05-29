@@ -98,10 +98,10 @@ app.get('/api/cron-check-matches', async (req, res) => {
 app.use('/api/matches', require('./routes/matches'));
 app.use('/api/prediction', require('./routes/prediction'));
 
-// === JALUR PINTAS KLASEMEN (Menggantikan routes/standings.js) ===
-app.get('/api/standings/:leagueId/:season', async (req, res) => {
+// === JALUR PINTAS KLASEMEN (JEBAKAN GANDA VERCEL) ===
+app.get(['/api/standings/:leagueId/:season', '/standings/:leagueId/:season'], async (req, res) => {
   const { leagueId, season } = req.params;
-  console.log(`DEBUG: Mencoba fetch klasemen liga ${leagueId} musim ${season}`);
+  console.log(`DEBUG: Mencoba fetch klasemen liga ${leagueId} musim ${season} via rute ${req.originalUrl}`);
   
   try {
     const response = await axios.get(`https://v3.football.api-sports.io/standings`, {
@@ -123,6 +123,15 @@ app.post('/api/save-token', async (req, res) => {
   if (!pushToken) return res.status(400).json({ error: "Token diperlukan" });
   await db.collection('push_tokens').doc(pushToken).set({ token: pushToken });
   res.json({ success: true });
+});
+
+// === JARING PENDETEKSI URL (PENTING UNTUK DEBUG VERCEL) ===
+app.use('*', (req, res) => {
+  res.status(404).json({
+    pesan: "Express menyala, tapi tidak mengenali rute ini.",
+    url_asli: req.originalUrl,
+    path_terbaca: req.path
+  });
 });
 
 module.exports = app;
