@@ -28,22 +28,30 @@ const expo = new Expo();
 app.use(cors());
 app.use(express.json());
 
-// === DEBUGGER GLOBAL (Agar kita tahu apa yang Vercel baca) ===
+// === DEBUGGER GLOBAL ===
 app.use((req, res, next) => {
   console.log(`[INCOMING REQUEST] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// === ROUTES ===
-// Tambahkan ekstensi .js di belakangnya untuk mencegah error Vercel
-app.use('/api/matches', require('./routes/matches.js'));
-app.use('/api/prediction', require('./routes/prediction.js'));
-app.use('/api/standings', require('./routes/standings.js')); 
-
-// Endpoint Dasar
+// === ENDPOINT DASAR ===
 app.get('/', (req, res) => res.send("Server Boltstats Berjalan & Terhubung ke Firestore!"));
 
-// Endpoint Save Token
+// === TEST ROUTE STANDINGS ===
+app.get('/api/standings/test', (req, res) => {
+  res.json({ message: "standings route aktif!" });
+});
+
+// === ROUTES ===
+console.log("📌 Mendaftarkan routes...");
+app.use('/api/matches', require('./routes/matches.js'));
+console.log("✅ /api/matches terdaftar");
+app.use('/api/prediction', require('./routes/prediction.js'));
+console.log("✅ /api/prediction terdaftar");
+app.use('/api/standings', require('./routes/standings.js'));
+console.log("✅ /api/standings terdaftar");
+
+// === ENDPOINT SAVE TOKEN ===
 app.post('/api/save-token', async (req, res) => {
   const { pushToken } = req.body;
   if (!pushToken) return res.status(400).json({ error: "Token diperlukan" });
@@ -51,7 +59,7 @@ app.post('/api/save-token', async (req, res) => {
   res.json({ success: true });
 });
 
-// Penanganan 404 jika rute benar-benar tidak ada
+// === PENANGANAN 404 ===
 app.use((req, res) => {
   res.status(404).json({ error: `Route ${req.originalUrl} tidak ditemukan di server.` });
 });
