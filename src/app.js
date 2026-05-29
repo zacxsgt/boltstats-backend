@@ -8,14 +8,12 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const NodeCache = require('node-cache'); // 🔥 1. Import Cache
-const { Expo } = require('expo-server-sdk'); // 🔥 2. Import SDK Notifikasi Expo
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// 🔥 3. Buat Mesin Cache & Inisialisasi Notifikasi Expo
+// 🔥 3. Buat Mesin Cache
 const myCache = new NodeCache({ stdTTL: 180 });
-const expo = new Expo();
 
 // ⚠️ Array untuk menyimpan token (Untuk testing).
 // Ingat: Di Vercel, data di dalam array ini akan reset jika server sedang tidak diakses/sleep!
@@ -84,12 +82,15 @@ app.get('/api/matches/stats/:id', async (req, res) => {
 // ==========================================
 // 🔥 API NOTIFIKASI 1: MENERIMA TOKEN DARI HP
 // ==========================================
-app.post('/api/save-token', (req, res) => {
+app.post('/api/save-token', async (req, res) => {
   const { pushToken } = req.body;
 
   if (!pushToken) {
     return res.status(400).json({ error: "Token tidak ditemukan" });
   }
+
+  // 🔥 JURUS ANTI-ERROR VERCEL: Import Expo secara dinamis di sini
+  const { Expo } = await import('expo-server-sdk');
 
   // Cek validitas format token ala Expo
   if (!Expo.isExpoPushToken(pushToken)) {
@@ -114,6 +115,10 @@ app.post('/api/send-notification', async (req, res) => {
   if (savedPushTokens.length === 0) {
     return res.status(400).json({ error: "Belum ada token HP yang tersimpan" });
   }
+
+  // 🔥 JURUS ANTI-ERROR VERCEL: Import dan inisialisasi Expo secara dinamis di sini
+  const { Expo } = await import('expo-server-sdk');
+  const expo = new Expo();
 
   let messages = [];
   for (let pushToken of savedPushTokens) {
