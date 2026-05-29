@@ -6,12 +6,18 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const NodeCache = require('node-cache'); // 🔥 1. Import Cache
+const { Expo } = require('expo-server-sdk'); // 🔥 2. Import SDK Notifikasi Expo
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// 🔥 2. Buat Mesin Cache (Menyimpan data selama 180 detik / 3 menit)
+// 🔥 3. Buat Mesin Cache & Inisialisasi Notifikasi Expo
 const myCache = new NodeCache({ stdTTL: 180 });
+const expo = new Expo();
+
+// ⚠️ Array untuk menyimpan token (Untuk testing).
+// Ingat: Di Vercel, data di dalam array ini akan reset jika server sedang tidak diakses/sleep!
+let savedPushTokens = []; 
 
 // Debug: Cek apakah kunci terbaca saat server menyala
 console.log("=== SISTEM START ===");
@@ -35,7 +41,7 @@ app.get('/', (req, res) => {
   res.send('Server Boltstats Berjalan!');
 });
 
-// === API BARU: AMBIL STATISTIK & FORMASI LIVE (ANTI-LIMIT) ===
+// === API LAMA: AMBIL STATISTIK & FORMASI LIVE (ANTI-LIMIT) ===
 app.get('/api/matches/stats/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -70,6 +76,68 @@ app.get('/api/matches/stats/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching live stats:', error.message);
     res.status(500).json({ error: 'Gagal mengambil statistik' });
+  }
+});
+
+// ==========================================
+// 🔥 API NOTIFIKASI 1: MENERIMA TOKEN DARI HP
+// ==========================================
+app.post('/api/save-token', (req, res) => {
+  const { pushToken } = req.body;
+
+  if (!pushToken) {
+    return res.status(400).json({ error: "Token tidak ditemukan" });
+  }
+
+  // Cek validitas format token ala Expo
+  if (!Expo.isExpoPushToken(pushToken)) {
+    return res.status(400).json({ error: "Push token tidak valid" });
+  }
+
+  // Simpan token ke array jika belum ada
+  if (!savedPushTokens.includes(pushToken)) {
+    savedPushTokens.push(pushToken);
+    console.log("✅ Token HP baru berhasil disimpan ke server:", pushToken);
+  }
+
+  res.json({ success: true, message: "Token berhasil disimpan di server" });
+});
+
+// ==========================================
+// 🔥 API NOTIFIKASI 2: MENEMBAK NOTIFIKASI KE SEMUA HP
+// ==========================================
+app.post('/api/send-notification', async (req, res) => {
+  const { title, body, data } = req.body;
+
+  if (savedPushTokens.length === 0) {
+    return res.status(400).json({ error: "Belum ada token HP yang tersimpan" });
+  }
+
+  let messages = [];
+  for (let pushToken of savedPushTokens) {
+    messages.push({
+      to: pushToken,
+      sound: 'default',
+      title: title || 'Notifikasi dari Boltstats! ⚽',
+      body: body || 'Ada update pertandingan terbaru!',
+      data: data || { matchId: null },
+    });
+  }
+
+  try {
+    let chunks = expo.chunkPushNotifications(messages);
+    let tickets = [];
+    
+    for (let chunk of chunks) {
+      let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+      tickets.push(...ticketChunk);
+    }
+    
+    console.log("🚀 Notifikasi sukses ditembakkan ke", savedPushTokens.length, "perangkat!");
+    res.json({ success: true, message: "Notifikasi sukses ditembakkan!" });
+  } catch (error) {
+    console.error("❌ Gagal mengirim notifikasi:", error);
+    res.status(500).json({ error: "Gagal mengirim notifikasi" });
   }
 });
 
