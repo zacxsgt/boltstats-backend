@@ -98,10 +98,12 @@ app.get('/api/cron-check-matches', async (req, res) => {
 app.use('/api/matches', require('./routes/matches'));
 app.use('/api/prediction', require('./routes/prediction'));
 
-// === JALUR PINTAS KLASEMEN (JEBAKAN GANDA VERCEL) ===
-app.get(['/api/standings/:leagueId/:season', '/standings/:leagueId/:season'], async (req, res) => {
+// === JARING LABA-LABA KLASEMEN ===
+app.get('*/standings/:leagueId/:season', async (req, res) => {
   const { leagueId, season } = req.params;
   console.log(`DEBUG: Mencoba fetch klasemen liga ${leagueId} musim ${season} via rute ${req.originalUrl}`);
+  
+  // (Sisa kode axios dan try-catch di bawahnya biarkan tetap sama)
   
   try {
     const response = await axios.get(`https://v3.football.api-sports.io/standings`, {
