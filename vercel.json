@@ -11,5 +11,11 @@
       "source": "/(.*)",
       "destination": "/src/app.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-check-matches",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }
