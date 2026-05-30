@@ -104,9 +104,9 @@ PENTING: Berikan respons HANYA dalam format JSON valid berikut. JANGAN tambahkan
   },
   "grafik_intensitas": [30, 45, 80, 50, 60, 40, 70, 90, 85, 60],
   "prediksi_skor": {
-    "skor_akhir": "X-X",
-    "skor_babak_pertama": "X-X",
-    "pencetak_gol_pertama": "Nama pemain",
+    "skor_akhir": "Wajib tebak dengan angka (Misal: 2-1 atau 0-0)",
+    "skor_babak_pertama": "Wajib tebak dengan angka (Misal: 1-0 atau 0-0)",
+    "pencetak_gol_pertama": "Nama pemain (Atau tulis 'Tidak ada' jika 0-0)",
     "pemenang_babak_pertama": "${homeTeam} / ${awayTeam} / Draw",
     "tingkat_keyakinan": "Tinggi / Sedang / Rendah",
     "alasan_skor": "Logika skor akhir"
