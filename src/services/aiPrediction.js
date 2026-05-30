@@ -29,7 +29,16 @@ const generatePrediction = async (matchData, extraData = {}) => {
     const homeAvgGoals = extraData.homeAvgGoals || 'N/A';
     const awayAvgGoals = extraData.awayAvgGoals || 'N/A';
 
-    // === PROMPT ASLI ANDA 100% UTUH ===
+    // === MERANGKUM DATA API KE DALAM TEKS UNTUK DIBACA AI ===
+    const h2hSummary = (extraData.h2hData && extraData.h2hData.length > 0)
+      ? extraData.h2hData.map(m => `${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}`).join(', ')
+      : "Tidak ada data riwayat H2H";
+
+    const injuriesSummary = (extraData.injuriesData && extraData.injuriesData.length > 0)
+      ? extraData.injuriesData.map(i => `${i.player.name} (${i.team.name} - ${i.type || i.reason || 'Cedera'})`).join(', ')
+      : "Tidak ada pemain cedera dilaporkan";
+
+    // === PROMPT ASLI ANDA (DENGAN TAMBAHAN FAKTA LAPANGAN) ===
     const prompt = `
 Anda adalah analis sepak bola elite dengan spesialisasi dalam statistik mendalam, taktik, dan prediksi pertandingan. Sebelum memberikan prediksi, Anda WAJIB melakukan riset mendalam secara bertahap seperti di bawah ini.
 
@@ -44,10 +53,14 @@ Form 5 Laga Terakhir ${awayTeam}: ${awayForm}
 Rata-rata gol per laga ${homeTeam}: ${homeAvgGoals}
 Rata-rata gol per laga ${awayTeam}: ${awayAvgGoals}
 
+=== FAKTA LAPANGAN (DATA REAL-TIME WAJIB BACA) ===
+Riwayat Head-to-Head Terakhir: ${h2hSummary}
+Daftar Pemain Cedera/Absen Hari Ini: ${injuriesSummary}
+
 === FASE RISET WAJIB (LAKUKAN SEBELUM PREDIKSI) ===
-1. RISET SKUAD & KONDISI TERKINI (MUSIM ${dynamicSeason}): Pelajari starting XI, cedera, pemain kunci, dan transfer.
+1. RISET SKUAD & KONDISI TERKINI (MUSIM ${dynamicSeason}): Pelajari starting XI, cedera di atas, pemain kunci, dan transfer.
 2. RISET PERFORMA MUSIM INI (${dynamicSeason}): Analisis posisi liga, statistik gol, performa kandang/tandang, dan tren 10 laga terakhir.
-3. RISET HISTORIS (3 MUSIM TERAKHIR): Analisis head-to-head, pola skor, dan dominasi tim.
+3. RISET HISTORIS (3 MUSIM TERAKHIR): Analisis head-to-head yang diberikan, pola skor, dan dominasi tim.
 4. RISET PELATIH: Filosofi taktik pelatih kedua tim dan head-to-head pelatih.
 5. FAKTOR KONTEKSTUAL: Kompetisi lain, rotasi, motivasi tim, dan faktor eksternal.
 
@@ -121,6 +134,20 @@ PENTING: Berikan respons HANYA dalam format JSON valid berikut. JANGAN tambahkan
     "ringkasan": "Narasi 3-4 kalimat ringkasan akhir.",
     "pick_terbaik": "Tuliskan saran rekomendasi taruhan paling confident secara lengkap tanpa terpotong",
     "tingkat_risiko": "Rendah / Sedang / Tinggi (sertakan persentasenya, misal: Sedang (65%))"
+  },
+  "info_tambahan_ui": {
+    "daftar_cedera": {
+      "home": "Nama pemain kunci yang absen/cedera (Tuan Rumah) beserta alasannya. Tulis 'Aman' jika tidak ada.",
+      "away": "Nama pemain kunci yang absen/cedera (Tamu) beserta alasannya. Tulis 'Aman' jika tidak ada."
+    },
+    "top_skor_tim": {
+      "home": "Nama top skor tuan rumah musim ini (Misal: E. Haaland - 14 Gol)",
+      "away": "Nama top skor tamu musim ini (Misal: M. Salah - 11 Gol)"
+    },
+    "line_up_visual": {
+      "formasi_home": "Hanya angka formasi (Misal: 4-3-3)",
+      "formasi_away": "Hanya angka formasi (Misal: 4-2-3-1)"
+    }
   }
 }
     `;
@@ -142,7 +169,7 @@ PENTING: Berikan respons HANYA dalam format JSON valid berikut. JANGAN tambahkan
   } catch (error) {
     console.error('--- ERROR PREDIKSI AI ---', error.message);
     
-    // Fallback sederhana sebagai ganti Error 500
+    // Fallback sederhana sebagai ganti Error 500 (Sudah ditambahkan info_tambahan_ui)
     return {
       riset_summary: { kondisi_home: { skuad_inti: "N/A", absen_cedera: "N/A", performa_musim_ini: "Data minim", pelatih: "N/A" }, kondisi_away: { skuad_inti: "N/A", absen_cedera: "N/A", performa_musim_ini: "Data minim", pelatih: "N/A" }, head_to_head: "N/A", faktor_kontekstual: "N/A" },
       tinjauan_singkat: { home: "N/A", away: "N/A", head_to_head: "N/A" },
@@ -153,7 +180,12 @@ PENTING: Berikan respons HANYA dalam format JSON valid berikut. JANGAN tambahkan
       prediksi_corner: { total_corner: "?", corner_home: 0, corner_away: 0, rekomendasi_corner: "N/A", alasan: "N/A" },
       prediksi_btts: { kedua_tim_cetak_gol: "N/A", alasan: "N/A" },
       rekomendasi_pasar: { handicap: { saran: "N/A" }, over_under_gol: { saran: "N/A" }, over_under_corner: { saran: "N/A" }, btts: { saran: "N/A" }, pencetak_gol_pertama: { saran: "N/A" }, pemenang_babak_pertama: { saran: "N/A" } },
-      kesimpulan: { ringkasan: "Sistem gagal menarik data analisis dari AI.", pick_terbaik: "N/A", tingkat_risiko: "Tinggi" }
+      kesimpulan: { ringkasan: "Sistem gagal menarik data analisis dari AI.", pick_terbaik: "N/A", tingkat_risiko: "Tinggi" },
+      info_tambahan_ui: {
+        daftar_cedera: { home: "N/A", away: "N/A" },
+        top_skor_tim: { home: "N/A", away: "N/A" },
+        line_up_visual: { formasi_home: "?", formasi_away: "?" }
+      }
     };
   }
 };
