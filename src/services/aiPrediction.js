@@ -141,8 +141,8 @@ PENTING: Berikan respons HANYA dalam format JSON valid berikut. JANGAN tambahkan
       "away": "Nama pemain kunci yang absen/cedera (Tamu) beserta alasannya. Tulis 'Aman' jika tidak ada."
     },
     "top_skor_tim": {
-      "home": "Nama top skor tuan rumah musim ini (Misal: E. Haaland - 14 Gol)",
-      "away": "Nama top skor tamu musim ini (Misal: M. Salah - 11 Gol)"
+      "home": "Sebutkan 1 nama penyerang utama / andalan dari ${homeTeam}. Jangan gunakan huruf X atau Y.",
+      "away": "Sebutkan 1 nama penyerang utama / andalan dari ${awayTeam}. Jangan gunakan huruf X atau Y."
     },
     "line_up_visual": {
       "formasi_home": "Hanya angka formasi (Misal: 4-3-3)",
