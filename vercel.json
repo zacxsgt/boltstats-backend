@@ -1,19 +1,9 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "src/app.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/standings/([^/]+)/([^/]+)",
-      "dest": "src/app.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "src/app.js"
+      "source": "/(.*)",
+      "destination": "/src/app.js"
     }
   ],
   "crons": [
