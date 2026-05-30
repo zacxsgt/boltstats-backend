@@ -26,6 +26,18 @@ const expo = new Expo();
 app.use(cors());
 app.use(express.json());
 
+app.get('/test123', (req, res) => {
+  res.json({ ok: true });
+});
+
+app.get('/api/test', (req, res) => {
+  res.json({ ok: true });
+});
+
+app.get('/api/standings/39/2024', (req, res) => {
+  res.json({ hardcoded: true, leagueId: '39', season: '2024' });
+});
+
 app.use((req, res, next) => {
   console.log(`[INCOMING REQUEST] ${req.method} ${req.originalUrl}`);
   next();
